@@ -193,6 +193,8 @@ namespace RA2RPG.EditorTools
             metadata.LimbCount = totalLimbs;
             metadata.VoxelCount = totalVoxels;
 
+            root.AddComponent<RA2VehicleController>();
+
             string prefabPath = $"{prefabFolder}/{objectId}.prefab";
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
