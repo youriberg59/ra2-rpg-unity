@@ -37,6 +37,7 @@ namespace RA2RPG.RA2
         public bool IsEncrypted { get; private set; }
         public bool HasChecksum { get; private set; }
         public int EntryCount => entries.Count;
+        public IEnumerable<Entry> Entries => entries.Values;
 
         public MixArchive(string filePath)
         {
