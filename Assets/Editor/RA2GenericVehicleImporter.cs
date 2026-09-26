@@ -136,9 +136,10 @@ namespace RA2RPG.EditorTools
             var visual = new GameObject("Visual");
             visual.transform.SetParent(heading.transform, false);
 
-            // Fixed presentation transform. Gameplay heading is applied to the
-            // parent "Heading" object, never mixed into this isometric tilt.
-            visual.transform.localRotation = Quaternion.Euler(28f, 45f, 0f);
+            // Fixed presentation transform is exposed on a component so it can
+            // be tuned without reimporting or touching gameplay heading logic.
+            var presentation = visual.AddComponent<RA2VehiclePresentation>();
+            presentation.EulerAngles = new Vector3(35.264f, 45f, 0f);
 
             int totalVoxels = 0;
             int totalLimbs = 0;
