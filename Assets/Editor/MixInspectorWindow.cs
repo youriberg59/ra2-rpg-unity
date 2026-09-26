@@ -10,7 +10,7 @@ namespace RA2RPG.EditorTools
     {
         private string selectedMix = "";
         private string filename = "E2.SHP";
-        private string status = "Choose a MIX archive from LocalRA2.";
+        private string status = "Check filename searches every MIX in LocalRA2 automatically.";
         private Vector2 scroll;
 
         [MenuItem("RA2 RPG/MIX Inspector")]
@@ -87,17 +87,20 @@ namespace RA2RPG.EditorTools
 
             try
             {
-                using var mix = new MixArchive(selectedMix);
                 uint hash = WestwoodCrc32.HashFilename(filename);
-
-                var result = RA2AssetLocator.FindInArchiveTree(selectedMix, filename);
+                string root = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "LocalRA2"));
+                var result = RA2AssetLocator.FindInDirectory(root, filename);
                 bool found = result != null;
+
+                int topLevelMixCount = Directory.Exists(root)
+                    ? Directory.GetFiles(root, "*.mix", SearchOption.AllDirectories).Length
+                    : 0;
 
                 status =
                     $"Filename: {filename}\n" +
                     $"Westwood hash: 0x{hash:X8}\n" +
                     $"Found: {found}\n" +
-                    $"Root archive entries: {mix.EntryCount}" +
+                    $"MIX archives scanned: {topLevelMixCount}" +
                     (found ? $"\nPath: {result.Path}" : "");
             }
             catch (Exception ex)
@@ -113,11 +116,12 @@ namespace RA2RPG.EditorTools
 
             try
             {
-                var result = RA2AssetLocator.FindInArchiveTree(selectedMix, filename);
+                string root = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "LocalRA2"));
+                var result = RA2AssetLocator.FindInDirectory(root, filename);
 
                 if (result == null)
                 {
-                    status = $"'{filename}' was not found in this MIX tree.";
+                    status = $"'{filename}' was not found in any MIX under LocalRA2.";
                     return;
                 }
 
@@ -144,12 +148,6 @@ namespace RA2RPG.EditorTools
 
         private bool ValidateSelection()
         {
-            if (string.IsNullOrWhiteSpace(selectedMix) || !File.Exists(selectedMix))
-            {
-                status = "Choose a valid MIX archive first.";
-                return false;
-            }
-
             if (string.IsNullOrWhiteSpace(filename))
             {
                 status = "Enter a filename such as E2.SHP.";
