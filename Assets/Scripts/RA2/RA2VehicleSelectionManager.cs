@@ -11,6 +11,7 @@ namespace RA2RPG.RA2
         private static RA2VehicleSelectionManager instance;
 
         [SerializeField] private float fallbackSelectionRadiusPixels = 55f;
+        [SerializeField] private float indicatorYOffset = -0.18f;
 
         private RA2VehicleController selected;
         private GameObject indicator;
@@ -225,6 +226,8 @@ namespace RA2RPG.RA2
             indicatorLine.enabled = true;
 
             Vector3 c = selected.transform.position;
+            c.y += indicatorYOffset;
+
             float rx = 0.62f;
             float ry = 0.32f;
             float z = c.z - 0.15f;
