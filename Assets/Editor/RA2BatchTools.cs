@@ -133,11 +133,11 @@ namespace RA2RPG.EditorTools
             }
 
             sb.AppendLine();
-            sb.AppendLine("Global recursive search:");
+            sb.AppendLine("Global unit sprite resolution:");
             try
             {
                 var trace = new RA2AssetLocator.SearchTrace();
-                var result = RA2AssetLocator.FindInDirectory(localRa2, "E2.SHP", 4, trace);
+                var result = RA2UnitAssetResolver.FindUnitSprite(localRa2, "E2", 4, trace);
                 sb.AppendLine(result == null ? "NOT FOUND" : $"FOUND: {result.Path}");
                 sb.AppendLine(trace.ToString());
             }
