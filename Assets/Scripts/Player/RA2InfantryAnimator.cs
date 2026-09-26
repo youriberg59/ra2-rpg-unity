@@ -81,7 +81,7 @@ namespace RA2RPG.Player
         private int DirectionToFacing(Vector3 direction)
         {
             // Unity world: +X east, +Y north. Convert to clockwise 8-way facing.
-            float angle = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
+            float angle = Mathf.Atan2(-direction.x, direction.y) * Mathf.Rad2Deg;
             if (angle < 0f)
                 angle += 360f;
 
