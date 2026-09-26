@@ -121,7 +121,8 @@ namespace RA2RPG.EditorTools
             {
                 uint hash = WestwoodCrc32.HashFilename(filename);
                 string root = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "LocalRA2"));
-                var result = RA2AssetLocator.FindInDirectory(root, filename);
+                var trace = new RA2AssetLocator.SearchTrace();
+                var result = RA2AssetLocator.FindInDirectory(root, filename, 3, trace);
                 bool found = result != null;
 
                 int topLevelMixCount = 0;
@@ -136,7 +137,8 @@ namespace RA2RPG.EditorTools
                     $"Westwood hash: 0x{hash:X8}\n" +
                     $"Found: {found}\n" +
                     $"MIX/DAT archives scanned: {topLevelMixCount}" +
-                    (found ? $"\nPath: {result.Path}" : "");
+                    (found ? $"\nPath: {result.Path}" : "") +
+                    $"\n\nSearch trace:\n{trace}";
             }
             catch (Exception ex)
             {
