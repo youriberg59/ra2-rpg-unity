@@ -99,6 +99,30 @@ namespace RA2RPG.EditorTools
                     lines.Add($"{name}  0x{hash:X8}  {(mix.Contains(name) ? "FOUND" : "-")}");
                 }
 
+                if (string.Equals(filename, "E2.SHP", StringComparison.OrdinalIgnoreCase))
+                {
+                    string[] aliases =
+                    {
+                        "E2.SHP",
+                        "E2",
+                        "CONS.SHP",
+                        "CONSCRIPT.SHP",
+                        "CONSCRIPT",
+                        "CONSCRIP.SHP",
+                        "CONSCRPT.SHP"
+                    };
+
+                    lines.Add("");
+                    lines.Add("Conscript filename probes:");
+
+                    foreach (string alias in aliases)
+                    {
+                        uint aliasHash = WestwoodCrc32.HashFilename(alias);
+                        bool aliasFound = mix.Contains(alias);
+                        lines.Add($"{alias}  0x{aliasHash:X8}  {(aliasFound ? "FOUND" : "-")}");
+                    }
+                }
+
                 lines.Add("");
                 lines.Add("Raw entry hashes:");
                 foreach (var entry in mix.Entries)
