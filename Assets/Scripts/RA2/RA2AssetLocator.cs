@@ -48,13 +48,46 @@ namespace RA2RPG.RA2
             }
         }
 
-        public static SearchResult FindInArchiveTree(string rootMixPath, string filename, int maxDepth = 3)
+        public sealed class SearchTrace
         {
-            using var root = new MixArchive(rootMixPath);
-            return FindRecursive(root, Path.GetFileName(rootMixPath), filename, 0, maxDepth);
+            public readonly List<string> Lines = new List<string>();
+
+            public void Add(string line)
+            {
+                Lines.Add(line);
+            }
+
+            public override string ToString()
+            {
+                return string.Join("\n", Lines);
+            }
         }
 
-        public static SearchResult FindInDirectory(string rootDirectory, string filename, int maxDepth = 3)
+        public static SearchResult FindInArchiveTree(
+            string rootMixPath,
+            string filename,
+            int maxDepth = 3,
+            SearchTrace trace = null
+        )
+        {
+            using var root = new MixArchive(rootMixPath);
+            trace?.Add($"OPEN {Path.GetFileName(rootMixPath)} : {root.EntryCount} entries");
+            return FindRecursive(
+                root,
+                Path.GetFileName(rootMixPath),
+                filename,
+                0,
+                maxDepth,
+                trace
+            );
+        }
+
+        public static SearchResult FindInDirectory(
+            string rootDirectory,
+            string filename,
+            int maxDepth = 3,
+            SearchTrace trace = null
+        )
         {
             if (string.IsNullOrWhiteSpace(rootDirectory) || !Directory.Exists(rootDirectory))
                 return null;
@@ -78,7 +111,8 @@ namespace RA2RPG.RA2
             {
                 try
                 {
-                    var result = FindInArchiveTree(mixPath, filename, maxDepth);
+                    trace?.Add($"ROOT {Path.GetFileName(mixPath)}");
+                    var result = FindInArchiveTree(mixPath, filename, maxDepth, trace);
                     if (result != null)
                     {
                         string relative = Path.GetRelativePath(rootDirectory, mixPath);
@@ -88,8 +122,9 @@ namespace RA2RPG.RA2
                         );
                     }
                 }
-                catch
+                catch (Exception ex)
                 {
+                    trace?.Add($"ERROR {Path.GetFileName(mixPath)} : {ex.Message}");
                     // One unreadable/corrupt MIX must not stop the global search.
                 }
             }
@@ -102,7 +137,8 @@ namespace RA2RPG.RA2
             string archivePath,
             string filename,
             int depth,
-            int maxDepth
+            int maxDepth,
+            SearchTrace trace
         )
         {
             if (archive.Contains(filename))
@@ -126,29 +162,37 @@ namespace RA2RPG.RA2
                 {
                     childBytes = archive.ReadFile(childName);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    trace?.Add($"  READ ERROR {archivePath} → {childName} : {ex.Message}");
                     continue;
                 }
 
                 try
                 {
                     using var child = new MixArchive(childBytes, childName);
+                    trace?.Add(
+                        $"{new string(' ', (depth + 1) * 2)}OPEN {archivePath} → {childName} : {child.EntryCount} entries"
+                    );
+
                     var found = FindRecursive(
                         child,
                         archivePath + " → " + childName,
                         filename,
                         depth + 1,
-                        maxDepth
+                        maxDepth,
+                        trace
                     );
 
                     if (found != null)
                         return found;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // A candidate filename hash may theoretically collide or
-                    // the embedded data may not be a valid MIX. Ignore and continue.
+                    trace?.Add(
+                        $"{new string(' ', (depth + 1) * 2)}OPEN ERROR {archivePath} → {childName} : {ex.Message}"
+                    );
+                    // Keep searching sibling containers.
                 }
             }
 
