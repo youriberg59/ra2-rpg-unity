@@ -146,7 +146,18 @@ namespace RA2RPG.EditorTools
                 uint hash = WestwoodCrc32.HashFilename(filename);
                 string root = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "LocalRA2"));
                 var trace = new RA2AssetLocator.SearchTrace();
-                var result = RA2AssetLocator.FindInDirectory(root, filename, 3, trace);
+
+                RA2AssetLocator.SearchResult result;
+                if (string.Equals(filename, "E2.SHP", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(filename, "E2", StringComparison.OrdinalIgnoreCase))
+                {
+                    result = RA2UnitAssetResolver.FindUnitSprite(root, "E2", 4, trace);
+                }
+                else
+                {
+                    result = RA2AssetLocator.FindInDirectory(root, filename, 4, trace);
+                }
+
                 bool found = result != null;
 
                 int topLevelMixCount = 0;
@@ -178,7 +189,17 @@ namespace RA2RPG.EditorTools
             try
             {
                 string root = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "LocalRA2"));
-                var result = RA2AssetLocator.FindInDirectory(root, filename);
+
+                RA2AssetLocator.SearchResult result;
+                if (string.Equals(filename, "E2.SHP", StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(filename, "E2", StringComparison.OrdinalIgnoreCase))
+                {
+                    result = RA2UnitAssetResolver.FindUnitSprite(root, "E2", 4);
+                }
+                else
+                {
+                    result = RA2AssetLocator.FindInDirectory(root, filename, 4);
+                }
 
                 if (result == null)
                 {
