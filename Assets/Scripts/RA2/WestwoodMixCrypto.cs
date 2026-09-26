@@ -21,31 +21,48 @@ namespace RA2RPG.RA2
             BigInteger modulus = FromBigEndianUnsigned(modulusBigEndian);
             BigInteger exponent = new BigInteger(65537);
 
-            var key = new byte[56];
+            // Westwood's key decoder treats the 80-byte predata as two
+            // 40-byte RSA blocks. Each block yields 39 bytes of plaintext
+            // (pubkey bit length minus one byte), for 78 intermediate bytes.
+            // The Blowfish key is the first 56 bytes of that stream.
+            const int cipherBlockSize = 40;
+            const int plainBlockSize = 39;
+
+            var decoded = new byte[plainBlockSize * 2];
 
             for (int part = 0; part < 2; part++)
             {
-                byte[] cipherLittleEndian = new byte[40];
-                Buffer.BlockCopy(encrypted80, part * 40, cipherLittleEndian, 0, 40);
+                byte[] cipherLittleEndian = new byte[cipherBlockSize];
+                Buffer.BlockCopy(
+                    encrypted80,
+                    part * cipherBlockSize,
+                    cipherLittleEndian,
+                    0,
+                    cipherBlockSize
+                );
 
                 BigInteger cipher = FromLittleEndianUnsigned(cipherLittleEndian);
                 BigInteger plain = BigInteger.ModPow(cipher, exponent, modulus);
                 byte[] plainLittleEndian = ToLittleEndianUnsigned(plain);
 
-                if (plainLittleEndian.Length > 28)
+                if (plainLittleEndian.Length > plainBlockSize)
                     throw new InvalidDataException(
-                        $"Unexpected Westwood RSA plaintext size {plainLittleEndian.Length}; expected <= 28."
+                        $"Unexpected Westwood RSA plaintext size {plainLittleEndian.Length}; expected <= {plainBlockSize}."
                     );
 
+                // The original implementation copies a fixed 39-byte little-endian
+                // bignum buffer, zero-padded when necessary.
                 Buffer.BlockCopy(
                     plainLittleEndian,
                     0,
-                    key,
-                    part * 28,
+                    decoded,
+                    part * plainBlockSize,
                     plainLittleEndian.Length
                 );
             }
 
+            var key = new byte[56];
+            Buffer.BlockCopy(decoded, 0, key, 0, key.Length);
             return key;
         }
 
