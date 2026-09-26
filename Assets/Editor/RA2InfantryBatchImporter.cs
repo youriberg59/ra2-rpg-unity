@@ -41,12 +41,8 @@ namespace RA2RPG.EditorTools
 
             var result = new Result();
 
-            try
+            foreach (var kv in infantry)
             {
-                AssetDatabase.StartAssetEditing();
-
-                foreach (var kv in infantry)
-                {
                     string id = kv.Value?.Trim();
                     if (string.IsNullOrWhiteSpace(id))
                         continue;
@@ -92,13 +88,9 @@ namespace RA2RPG.EditorTools
                         result.Messages.Add($"{id}: FAILED - {ex.Message}");
                         Debug.LogException(ex);
                     }
-                }
             }
-            finally
-            {
-                AssetDatabase.StopAssetEditing();
-                AssetDatabase.Refresh();
-            }
+
+            AssetDatabase.Refresh();
 
             Debug.Log(result + "\n" + string.Join("\n", result.Messages));
             return result;
