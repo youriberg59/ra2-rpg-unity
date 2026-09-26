@@ -89,13 +89,16 @@ namespace RA2RPG.EditorTools
             {
                 using var mix = new MixArchive(selectedMix);
                 uint hash = WestwoodCrc32.HashFilename(filename);
-                bool found = mix.Contains(filename);
+
+                var result = RA2AssetLocator.FindInArchiveTree(selectedMix, filename);
+                bool found = result != null;
 
                 status =
                     $"Filename: {filename}\n" +
                     $"Westwood hash: 0x{hash:X8}\n" +
                     $"Found: {found}\n" +
-                    $"Archive entries: {mix.EntryCount}";
+                    $"Root archive entries: {mix.EntryCount}" +
+                    (found ? $"\nPath: {result.Path}" : "");
             }
             catch (Exception ex)
             {
@@ -110,11 +113,11 @@ namespace RA2RPG.EditorTools
 
             try
             {
-                using var mix = new MixArchive(selectedMix);
+                var result = RA2AssetLocator.FindInArchiveTree(selectedMix, filename);
 
-                if (!mix.Contains(filename))
+                if (result == null)
                 {
-                    status = $"'{filename}' is not present in this archive.";
+                    status = $"'{filename}' was not found in this MIX tree.";
                     return;
                 }
 
@@ -128,10 +131,10 @@ namespace RA2RPG.EditorTools
                 Directory.CreateDirectory(generatedRoot);
                 string destination = Path.Combine(generatedRoot, Path.GetFileName(filename));
 
-                mix.Extract(filename, destination);
+                File.WriteAllBytes(destination, result.Data);
                 AssetDatabase.Refresh();
 
-                status = $"Extracted to:\n{destination}";
+                status = $"Found at:\n{result.Path}\n\nExtracted to:\n{destination}";
             }
             catch (Exception ex)
             {
