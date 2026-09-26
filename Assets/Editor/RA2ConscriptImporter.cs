@@ -174,8 +174,8 @@ namespace RA2RPG.EditorTools
 
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
-            settings.spriteAlignment = (int)SpriteAlignment.BottomCenter;
-            settings.spritePivot = new Vector2(0.5f, 0f);
+            settings.spriteAlignment = (int)SpriteAlignment.Center;
+            settings.spritePivot = new Vector2(0.5f, 0.5f);
             importer.SetTextureSettings(settings);
 
             importer.SaveAndReimport();
