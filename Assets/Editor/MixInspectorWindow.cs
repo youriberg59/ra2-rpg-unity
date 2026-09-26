@@ -68,11 +68,43 @@ namespace RA2RPG.EditorTools
             try
             {
                 using var mix = new MixArchive(selectedMix);
-                status =
-                    $"Archive: {Path.GetFileName(selectedMix)}\n" +
-                    $"Entries: {mix.EntryCount}\n" +
-                    $"Encrypted: {mix.IsEncrypted}\n" +
-                    $"Checksum flag: {mix.HasChecksum}";
+
+                string[] knownContainers =
+                {
+                    "conquer.mix",
+                    "local.mix",
+                    "cache.mix",
+                    "generic.mix",
+                    "isogen.mix",
+                    "neutral.mix",
+                    "load.mix",
+                    "temperat.mix",
+                    "snow.mix",
+                    "urban.mix"
+                };
+
+                var lines = new System.Collections.Generic.List<string>
+                {
+                    $"Archive: {Path.GetFileName(selectedMix)}",
+                    $"Entries: {mix.EntryCount}",
+                    $"Encrypted: {mix.IsEncrypted}",
+                    $"Checksum flag: {mix.HasChecksum}",
+                    "",
+                    "Known nested containers:"
+                };
+
+                foreach (string name in knownContainers)
+                {
+                    uint hash = WestwoodCrc32.HashFilename(name);
+                    lines.Add($"{name}  0x{hash:X8}  {(mix.Contains(name) ? "FOUND" : "-")}");
+                }
+
+                lines.Add("");
+                lines.Add("Raw entry hashes:");
+                foreach (var entry in mix.Entries)
+                    lines.Add($"0x{entry.Hash:X8}  offset={entry.Offset}  length={entry.Length}");
+
+                status = string.Join("\n", lines);
             }
             catch (Exception ex)
             {
