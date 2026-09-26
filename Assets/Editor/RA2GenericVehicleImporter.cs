@@ -129,10 +129,15 @@ namespace RA2RPG.EditorTools
             Material material = GetOrCreateVertexColorMaterial();
 
             var root = new GameObject(objectId);
-            var visual = new GameObject("Visual");
-            visual.transform.SetParent(root.transform, false);
 
-            // A light isometric presentation for the current front-facing RPG camera.
+            var heading = new GameObject("Heading");
+            heading.transform.SetParent(root.transform, false);
+
+            var visual = new GameObject("Visual");
+            visual.transform.SetParent(heading.transform, false);
+
+            // Fixed presentation transform. Gameplay heading is applied to the
+            // parent "Heading" object, never mixed into this isometric tilt.
             visual.transform.localRotation = Quaternion.Euler(28f, 45f, 0f);
 
             int totalVoxels = 0;
