@@ -9,7 +9,7 @@ namespace RA2RPG.RA2
     public sealed class RA2VehiclePresentation : MonoBehaviour
     {
         [Header("Fixed visual orientation")]
-        [SerializeField] private Vector3 eulerAngles = new Vector3(35.264f, 45f, 0f);
+        [SerializeField] private Vector3 eulerAngles = new Vector3(7.4f, -84.1f, 49f);
 
         public Vector3 EulerAngles
         {
