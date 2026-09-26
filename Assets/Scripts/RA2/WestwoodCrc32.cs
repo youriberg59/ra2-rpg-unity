@@ -17,25 +17,29 @@ namespace RA2RPG.RA2
 
         public static uint HashFilename(string filename)
         {
-            string name = filename.ToUpperInvariant();
-            int originalLength = name.Length;
-            int block = originalLength >> 2;
+            byte[] upper = Encoding.ASCII.GetBytes(filename.ToUpperInvariant());
+            int length = upper.Length;
+            int residue = length & 3;
 
-            if ((originalLength & 3) != 0)
-            {
-                int remainder = originalLength - (block << 2);
-                name += (char)remainder;
+            if (residue == 0)
+                return Compute(upper);
 
-                int paddingCount = 3 - (originalLength & 3);
-                int sourceIndex = block << 2;
-                char pad = name[sourceIndex < name.Length ? sourceIndex : 0];
+            int paddingCount = 4 - residue;
+            int roundedPosition = length - residue;
+            byte fill = upper[roundedPosition];
 
-                for (int i = 0; i < paddingCount; i++)
-                    name += pad;
-            }
+            byte[] padded = new byte[length + paddingCount];
+            Buffer.BlockCopy(upper, 0, padded, 0, length);
 
-            byte[] bytes = Encoding.ASCII.GetBytes(name);
-            return Compute(bytes);
+            // Westwood RA2 padding:
+            // first pad byte = residue length,
+            // remaining pad bytes = byte at last 4-byte-aligned position.
+            padded[length] = (byte)residue;
+
+            for (int i = 1; i < paddingCount; i++)
+                padded[length + i] = fill;
+
+            return Compute(padded);
         }
 
         private static uint[] BuildTable()
