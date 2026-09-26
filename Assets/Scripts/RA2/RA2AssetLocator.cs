@@ -8,6 +8,7 @@ namespace RA2RPG.RA2
     {
         private static readonly string[] NestedMixCandidates =
         {
+            "conquer.dat",
             "conquer.mix",
             "local.mix",
             "generic.mix",
@@ -58,15 +59,22 @@ namespace RA2RPG.RA2
             if (string.IsNullOrWhiteSpace(rootDirectory) || !Directory.Exists(rootDirectory))
                 return null;
 
-            string[] mixFiles = Directory.GetFiles(
+            var archives = new List<string>();
+            archives.AddRange(Directory.GetFiles(
                 rootDirectory,
                 "*.mix",
                 SearchOption.AllDirectories
-            );
+            ));
+            archives.AddRange(Directory.GetFiles(
+                rootDirectory,
+                "*.dat",
+                SearchOption.AllDirectories
+            ));
 
-            Array.Sort(mixFiles, StringComparer.OrdinalIgnoreCase);
+            string[] archiveFiles = archives.ToArray();
+            Array.Sort(archiveFiles, StringComparer.OrdinalIgnoreCase);
 
-            foreach (string mixPath in mixFiles)
+            foreach (string mixPath in archiveFiles)
             {
                 try
                 {
