@@ -48,18 +48,20 @@ namespace RA2RPG.EditorTools
                 EnsureFolder("Assets/Generated/RA2", "E2");
 
                 var generatedPaths = new List<string>();
+                var generatedPivots = new List<Vector2>();
 
                 for (int i = 0; i < shp.Frames.Count; i++)
                 {
                     string assetPath = $"{OutputFolder}/frame_{i:D3}.png";
-                    WriteFramePng(shp, shp.Frames[i], palette, assetPath);
+                    Vector2 pivot = WriteFramePng(shp, shp.Frames[i], palette, assetPath);
                     generatedPaths.Add(assetPath);
+                    generatedPivots.Add(pivot);
                 }
 
                 AssetDatabase.Refresh();
 
-                foreach (string assetPath in generatedPaths)
-                    ConfigureSpriteImporter(assetPath);
+                for (int i = 0; i < generatedPaths.Count; i++)
+                    ConfigureSpriteImporter(generatedPaths[i], generatedPivots[i]);
 
                 AssetDatabase.Refresh();
 
@@ -92,7 +94,7 @@ namespace RA2RPG.EditorTools
             }
         }
 
-        private static void WriteFramePng(
+        private static Vector2 WriteFramePng(
             ShpFileDecoder shp,
             ShpFileDecoder.Frame frame,
             WestwoodPalette palette,
@@ -114,6 +116,8 @@ namespace RA2RPG.EditorTools
             };
 
             var pixels = new Color32[width * height];
+            int lowestOpaqueY = height;
+            int highestOpaqueY = -1;
 
             for (int i = 0; i < pixels.Length; i++)
                 pixels[i] = new Color32(0, 0, 0, 0);
@@ -140,6 +144,11 @@ namespace RA2RPG.EditorTools
                     // SHP coordinates are top-down; Unity texture coordinates are bottom-up.
                     int canvasY = height - 1 - canvasYTop;
                     pixels[canvasY * width + canvasX] = palette.Colors[paletteIndex];
+
+                    if (canvasY < lowestOpaqueY)
+                        lowestOpaqueY = canvasY;
+                    if (canvasY > highestOpaqueY)
+                        highestOpaqueY = canvasY;
                 }
             }
 
@@ -155,9 +164,17 @@ namespace RA2RPG.EditorTools
 
             Directory.CreateDirectory(Path.GetDirectoryName(absolute));
             File.WriteAllBytes(absolute, png);
+
+            // Keep X anchored to the stable SHP canvas center, but put Y at the
+            // lowest visible pixel so the GameObject transform represents the feet.
+            float pivotY = lowestOpaqueY < height
+                ? Mathf.Clamp01(lowestOpaqueY / (float)Math.Max(1, height - 1))
+                : 0.5f;
+
+            return new Vector2(0.5f, pivotY);
         }
 
-        private static void ConfigureSpriteImporter(string assetPath)
+        private static void ConfigureSpriteImporter(string assetPath, Vector2 pivot)
         {
             AssetDatabase.ImportAsset(assetPath, ImportAssetOptions.ForceUpdate);
 
@@ -174,8 +191,8 @@ namespace RA2RPG.EditorTools
 
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
-            settings.spriteAlignment = (int)SpriteAlignment.Center;
-            settings.spritePivot = new Vector2(0.5f, 0.5f);
+            settings.spriteAlignment = (int)SpriteAlignment.Custom;
+            settings.spritePivot = pivot;
             importer.SetTextureSettings(settings);
 
             importer.SaveAndReimport();
