@@ -153,9 +153,9 @@ namespace RA2RPG.EditorTools
             float maxY = limb.Bounds[4];
             float maxZ = limb.Bounds[5];
 
-            float sx = Math.Abs(maxX - minX) / Math.Max(1, limb.SizeX);
-            float sy = Math.Abs(maxY - minY) / Math.Max(1, limb.SizeY);
-            float sz = Math.Abs(maxZ - minZ) / Math.Max(1, limb.SizeZ);
+            float sx = Math.Abs(maxX - minX) / Math.Max(1, (int)limb.SizeX);
+            float sy = Math.Abs(maxY - minY) / Math.Max(1, (int)limb.SizeY);
+            float sz = Math.Abs(maxZ - minZ) / Math.Max(1, (int)limb.SizeZ);
 
             if (sx <= 0f) sx = 1f;
             if (sy <= 0f) sy = 1f;
