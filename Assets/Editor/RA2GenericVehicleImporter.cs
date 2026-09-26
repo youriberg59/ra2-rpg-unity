@@ -158,7 +158,7 @@ namespace RA2RPG.EditorTools
 
             // Fixed isometric presentation stays above the gameplay heading.
             var presentation = visual.AddComponent<RA2VehiclePresentation>();
-            presentation.EulerAngles = new Vector3(4.75f, -83.2f, 43.5f);
+            presentation.EulerAngles = new Vector3(-0.53f, -83.2f, 43.5f);
 
             var heading = new GameObject("Heading");
             heading.transform.SetParent(visual.transform, false);
