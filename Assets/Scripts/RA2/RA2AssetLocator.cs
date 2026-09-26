@@ -53,6 +53,42 @@ namespace RA2RPG.RA2
             return FindRecursive(root, Path.GetFileName(rootMixPath), filename, 0, maxDepth);
         }
 
+        public static SearchResult FindInDirectory(string rootDirectory, string filename, int maxDepth = 3)
+        {
+            if (string.IsNullOrWhiteSpace(rootDirectory) || !Directory.Exists(rootDirectory))
+                return null;
+
+            string[] mixFiles = Directory.GetFiles(
+                rootDirectory,
+                "*.mix",
+                SearchOption.AllDirectories
+            );
+
+            Array.Sort(mixFiles, StringComparer.OrdinalIgnoreCase);
+
+            foreach (string mixPath in mixFiles)
+            {
+                try
+                {
+                    var result = FindInArchiveTree(mixPath, filename, maxDepth);
+                    if (result != null)
+                    {
+                        string relative = Path.GetRelativePath(rootDirectory, mixPath);
+                        return new SearchResult(
+                            relative + result.Path.Substring(Path.GetFileName(mixPath).Length),
+                            result.Data
+                        );
+                    }
+                }
+                catch
+                {
+                    // One unreadable/corrupt MIX must not stop the global search.
+                }
+            }
+
+            return null;
+        }
+
         private static SearchResult FindRecursive(
             MixArchive archive,
             string archivePath,
