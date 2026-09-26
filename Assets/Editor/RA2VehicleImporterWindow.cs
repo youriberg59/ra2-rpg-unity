@@ -40,6 +40,22 @@ namespace RA2RPG.EditorTools
                 }
             }
 
+            EditorGUILayout.Space(8);
+
+            if (GUILayout.Button("Import All Vehicles (VXL)", GUILayout.Height(30)))
+            {
+                try
+                {
+                    var result = RA2VehicleBatchImporter.ImportAll();
+                    status = result.ToString();
+                }
+                catch (Exception ex)
+                {
+                    status = ex.Message;
+                    Debug.LogException(ex);
+                }
+            }
+
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox(status, MessageType.Info);
         }
