@@ -91,8 +91,9 @@ namespace RA2RPG.EditorTools
                     Path.Combine(Application.dataPath, "..", "LocalRA2")
                 );
 
-                var trace = new RA2AssetLocator.SearchTrace();
-                database = RA2ObjectAssetDatabase.Build(root, trace);
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                database = RA2ObjectAssetDatabase.Build(root, null);
+                stopwatch.Stop();
 
                 int total = database.Entries.Count;
                 int sprites = database.Entries.Count(e => e.SpriteFound);
@@ -101,7 +102,8 @@ namespace RA2RPG.EditorTools
                 status =
                     $"Objects resolved: {total}\n" +
                     $"Sprites found: {sprites}\n" +
-                    $"Cameos found: {cameos}";
+                    $"Cameos found: {cameos}\n" +
+                    $"Build time: {stopwatch.Elapsed.TotalSeconds:F2} s";
             }
             catch (Exception ex)
             {
