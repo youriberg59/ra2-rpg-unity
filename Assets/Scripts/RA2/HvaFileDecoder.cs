@@ -66,27 +66,35 @@ namespace RA2RPG.RA2
             {
                 for (int limb = 0; limb < result.LimbCount; limb++)
                 {
-                    // HVA stores a 3x4 affine matrix row by row.
-                    float m00 = reader.ReadSingle();
-                    float m01 = reader.ReadSingle();
-                    float m02 = reader.ReadSingle();
-                    float m03 = reader.ReadSingle();
+                    // Westwood HVA stores 12 affine values in row-major order,
+                    // while the consumers of the format treat them as a transposed
+                    // column-major 4x4 matrix. Reconstruct that matrix explicitly.
+                    float[] values = new float[12];
+                    for (int k = 0; k < 12; k++)
+                        values[k] = reader.ReadSingle();
 
-                    float m10 = reader.ReadSingle();
-                    float m11 = reader.ReadSingle();
-                    float m12 = reader.ReadSingle();
-                    float m13 = reader.ReadSingle();
+                    // Equivalent to the canonical HVA transpose mapping:
+                    // source 0..11 -> destination 0,4,8,12,1,5,9,13,2,6,10,14.
+                    var ra2 = Matrix4x4.identity;
+                    ra2[0]  = values[0];
+                    ra2[4]  = values[1];
+                    ra2[8]  = values[2];
+                    ra2[12] = values[3];
 
-                    float m20 = reader.ReadSingle();
-                    float m21 = reader.ReadSingle();
-                    float m22 = reader.ReadSingle();
-                    float m23 = reader.ReadSingle();
+                    ra2[1]  = values[4];
+                    ra2[5]  = values[5];
+                    ra2[9]  = values[6];
+                    ra2[13] = values[7];
 
-                    var ra2 = new Matrix4x4();
-                    ra2.m00 = m00; ra2.m01 = m01; ra2.m02 = m02; ra2.m03 = m03;
-                    ra2.m10 = m10; ra2.m11 = m11; ra2.m12 = m12; ra2.m13 = m13;
-                    ra2.m20 = m20; ra2.m21 = m21; ra2.m22 = m22; ra2.m23 = m23;
-                    ra2.m30 = 0f;  ra2.m31 = 0f;  ra2.m32 = 0f;  ra2.m33 = 1f;
+                    ra2[2]  = values[8];
+                    ra2[6]  = values[9];
+                    ra2[10] = values[10];
+                    ra2[14] = values[11];
+
+                    ra2[3] = 0f;
+                    ra2[7] = 0f;
+                    ra2[11] = 0f;
+                    ra2[15] = 1f;
 
                     result.limbs[limb].Frames.Add(ConvertRa2ToUnity(ra2));
                 }
