@@ -25,8 +25,27 @@ namespace RA2RPG.EditorTools
             if (GUILayout.Button("Import Unit", GUILayout.Height(30)))
                 ImportCurrent();
 
+            EditorGUILayout.Space(8);
+
+            if (GUILayout.Button("Import All Infantry (SHP)", GUILayout.Height(30)))
+                ImportAllInfantry();
+
             EditorGUILayout.Space();
             EditorGUILayout.HelpBox(status, MessageType.Info);
+        }
+
+        private void ImportAllInfantry()
+        {
+            try
+            {
+                var result = RA2InfantryBatchImporter.ImportAll();
+                status = result.ToString();
+            }
+            catch (Exception ex)
+            {
+                status = ex.Message;
+                Debug.LogException(ex);
+            }
         }
 
         private void ImportCurrent()
