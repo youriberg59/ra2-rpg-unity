@@ -209,16 +209,15 @@ namespace RA2RPG.EditorTools
             spriteRenderer.sortingOrder = 100;
             hero.transform.localScale = Vector3.one;
 
-            var animator = hero.GetComponent<SimpleSpriteAnimator>();
-            if (animator == null)
-                animator = hero.AddComponent<SimpleSpriteAnimator>();
+            var oldPreview = hero.GetComponent<SimpleSpriteAnimator>();
+            if (oldPreview != null)
+                UnityEngine.Object.DestroyImmediate(oldPreview);
 
-            // Use a small subset for the visual validation pass. Proper RA2 action
-            // sequence mapping (standing/walking/firing/death + facings) comes next.
-            int count = Math.Min(8, sprites.Length);
-            var preview = new Sprite[count];
-            Array.Copy(sprites, preview, count);
-            animator.SetFrames(preview, 8f);
+            var animator = hero.GetComponent<RA2InfantryAnimator>();
+            if (animator == null)
+                animator = hero.AddComponent<RA2InfantryAnimator>();
+
+            animator.SetFrames(sprites);
 
             EditorUtility.SetDirty(hero);
         }
