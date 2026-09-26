@@ -9,18 +9,52 @@ namespace RA2RPG.EditorTools
 {
     public static class RA2GenericVehicleImporter
     {
+        public sealed class ImportContext
+        {
+            public string LocalRa2;
+            public RA2ObjectAssetDatabase Database;
+            public WestwoodPalette Palette;
+        }
+
+        public static ImportContext CreateContext()
+        {
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            string localRa2 = Path.Combine(projectRoot, "LocalRA2");
+
+            var paletteResult = RA2AssetLocator.FindInDirectory(
+                localRa2,
+                "unittem.pal",
+                4
+            );
+
+            if (paletteResult == null)
+                throw new FileNotFoundException("unittem.pal was not found.");
+
+            return new ImportContext
+            {
+                LocalRa2 = localRa2,
+                Database = RA2ObjectAssetDatabase.Build(localRa2, null),
+                Palette = WestwoodPalette.FromBytes(paletteResult.Data)
+            };
+        }
+
         public static string Import(string objectId)
+        {
+            return Import(objectId, CreateContext());
+        }
+
+        public static string Import(string objectId, ImportContext context)
         {
             if (string.IsNullOrWhiteSpace(objectId))
                 throw new ArgumentException("Vehicle object ID is required.", nameof(objectId));
 
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
+
             objectId = objectId.Trim().ToUpperInvariant();
 
-            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-            string localRa2 = Path.Combine(projectRoot, "LocalRA2");
-
-            var database = RA2ObjectAssetDatabase.Build(localRa2, null);
-            var entry = database.Get(objectId);
+            string localRa2 = context.LocalRa2;
+            var entry = context.Database.Get(objectId);
 
             if (entry == null)
                 throw new InvalidOperationException($"RA2 object '{objectId}' was not found.");
@@ -62,16 +96,7 @@ namespace RA2RPG.EditorTools
                 );
             }
 
-            var paletteResult = RA2AssetLocator.FindInDirectory(
-                localRa2,
-                "unittem.pal",
-                4
-            );
-
-            if (paletteResult == null)
-                throw new FileNotFoundException("unittem.pal was not found.");
-
-            var palette = WestwoodPalette.FromBytes(paletteResult.Data);
+            var palette = context.Palette;
 
             var parts = new List<(string role, string filename, VxlFileDecoder model, HvaFileDecoder hva)>
             {
