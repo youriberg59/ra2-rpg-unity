@@ -62,9 +62,10 @@ namespace RA2RPG.RA2
                 HasChecksum = (possibleFlags & (uint)MixFlags.Checksum) != 0;
 
                 if (IsEncrypted)
-                    throw new NotSupportedException(
-                        "Encrypted Westwood MIX header detected. Encrypted MIX support is the next importer milestone."
-                    );
+                {
+                    ParseEncryptedHeader();
+                    return;
+                }
 
                 ParseTdHeader(stream.Position);
             }
@@ -73,6 +74,73 @@ namespace RA2RPG.RA2
                 // Classic TD/RA style MIX: header begins at byte zero.
                 ParseTdHeader(0);
             }
+        }
+
+        private void ParseEncryptedHeader()
+        {
+            const int keyBlockLength = 80;
+            const int encryptedHeaderStart = 84; // flags (4) + RSA key block (80)
+
+            stream.Position = 4;
+            byte[] encryptedKey = reader.ReadBytes(keyBlockLength);
+            if (encryptedKey.Length != keyBlockLength)
+                throw new EndOfStreamException("Encrypted MIX key block is truncated.");
+
+            byte[] blowfishKey = WestwoodMixCrypto.DeriveBlowfishKey(encryptedKey);
+
+            // First encrypted block contains the 6-byte TD header plus the
+            // beginning of the first entry, enough to recover the entry count.
+            stream.Position = encryptedHeaderStart;
+            byte[] firstEncryptedBlock = reader.ReadBytes(8);
+            if (firstEncryptedBlock.Length != 8)
+                throw new EndOfStreamException("Encrypted MIX header is truncated.");
+
+            byte[] firstPlainBlock = WestwoodMixCrypto.BlowfishDecrypt(
+                firstEncryptedBlock,
+                blowfishKey
+            );
+
+            ushort count = BitConverter.ToUInt16(firstPlainBlock, 0);
+            int plainHeaderLength = 6 + count * 12;
+            int encryptedHeaderLength = Align8(plainHeaderLength);
+
+            if (encryptedHeaderStart + encryptedHeaderLength > stream.Length)
+                throw new InvalidDataException(
+                    $"Encrypted MIX index is invalid: {count} entries exceed file length."
+                );
+
+            stream.Position = encryptedHeaderStart;
+            byte[] encryptedHeader = reader.ReadBytes(encryptedHeaderLength);
+            byte[] plainHeader = WestwoodMixCrypto.BlowfishDecrypt(
+                encryptedHeader,
+                blowfishKey
+            );
+
+            using var ms = new MemoryStream(plainHeader, writable: false);
+            using var br = new BinaryReader(ms);
+
+            ushort parsedCount = br.ReadUInt16();
+            br.ReadUInt32(); // declared data size
+
+            if (parsedCount != count)
+                throw new InvalidDataException("Encrypted MIX header count mismatch.");
+
+            entries.Clear();
+
+            for (int i = 0; i < parsedCount; i++)
+            {
+                uint hash = br.ReadUInt32();
+                uint offset = br.ReadUInt32();
+                uint length = br.ReadUInt32();
+                entries[hash] = new Entry(hash, offset, length);
+            }
+
+            dataStart = encryptedHeaderStart + encryptedHeaderLength;
+        }
+
+        private static int Align8(int value)
+        {
+            return (value + 7) & ~7;
         }
 
         private void ParseTdHeader(long headerOffset)
