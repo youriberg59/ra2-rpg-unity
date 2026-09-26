@@ -25,26 +25,42 @@ namespace RA2RPG.EditorTools
             if (entry == null)
                 throw new InvalidOperationException($"RA2 object '{objectId}' was not found.");
 
-            if (!entry.IsVoxel ||
-                string.IsNullOrWhiteSpace(entry.SpriteFilename) ||
-                !entry.SpriteFilename.EndsWith(".VXL", StringComparison.OrdinalIgnoreCase))
+            string imageBase = !string.IsNullOrWhiteSpace(entry.ImageId)
+                ? Path.GetFileNameWithoutExtension(entry.ImageId.Trim())
+                : objectId;
+
+            string[] vxlCandidates =
             {
-                throw new InvalidOperationException(
-                    $"'{objectId}' is not resolved as a VXL vehicle. " +
-                    $"Resolved asset: {entry.SpriteFilename ?? "(none)"}."
+                imageBase.ToUpperInvariant() + ".VXL",
+                objectId.ToUpperInvariant() + ".VXL"
+            };
+
+            RA2AssetLocator.SearchResult vxlResult = null;
+            string resolvedVxlFilename = null;
+
+            foreach (string candidate in vxlCandidates)
+            {
+                vxlResult = RA2AssetLocator.FindInDirectory(
+                    localRa2,
+                    candidate,
+                    4
                 );
+
+                if (vxlResult != null)
+                {
+                    resolvedVxlFilename = candidate;
+                    break;
+                }
             }
 
-            var vxlResult = RA2AssetLocator.FindInDirectory(
-                localRa2,
-                entry.SpriteFilename,
-                4
-            );
-
             if (vxlResult == null)
+            {
                 throw new FileNotFoundException(
-                    $"{entry.SpriteFilename} was not found in LocalRA2 archives."
+                    $"No VXL asset was found for '{objectId}'. " +
+                    $"Tried: {string.Join(", ", vxlCandidates)}. " +
+                    $"Catalog resolved: {entry.SpriteFilename ?? "(none)"}."
                 );
+            }
 
             var paletteResult = RA2AssetLocator.FindInDirectory(
                 localRa2,
@@ -117,8 +133,8 @@ namespace RA2RPG.EditorTools
             var metadata = root.AddComponent<RA2ImportedVehicleMetadata>();
             metadata.ObjectId = objectId;
             metadata.DisplayName = entry.DisplayName;
-            metadata.VxlFilename = entry.SpriteFilename;
-            metadata.HvaFilename = Path.GetFileNameWithoutExtension(entry.SpriteFilename) + ".HVA";
+            metadata.VxlFilename = resolvedVxlFilename;
+            metadata.HvaFilename = Path.GetFileNameWithoutExtension(resolvedVxlFilename) + ".HVA";
             metadata.LimbCount = model.Limbs.Count;
             metadata.VoxelCount = totalVoxels;
 
@@ -130,7 +146,7 @@ namespace RA2RPG.EditorTools
             AssetDatabase.Refresh();
 
             Debug.Log(
-                $"RA2 vehicle imported: {objectId} -> {entry.SpriteFilename}; " +
+                $"RA2 vehicle imported: {objectId} -> {resolvedVxlFilename}; " +
                 $"{model.Limbs.Count} limb(s), {totalVoxels} voxels; prefab: {prefabPath}"
             );
 
