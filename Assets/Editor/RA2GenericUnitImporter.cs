@@ -277,6 +277,31 @@ namespace RA2RPG.EditorTools
                     return sequence;
             }
 
+            // Some retail/mod INI layouts can make the Sequence= key unavailable
+            // after merging even though the sequence section itself is present.
+            // Try common Westwood naming conventions before giving up.
+            var conventionCandidates = new List<string>();
+
+            foreach (string section in sectionCandidates)
+            {
+                if (string.IsNullOrWhiteSpace(section))
+                    continue;
+
+                conventionCandidates.Add(section + "Sequence");
+
+                string normalized = section.Trim();
+                if (normalized.Equals("CONS", StringComparison.OrdinalIgnoreCase))
+                    conventionCandidates.Add("ConSequence");
+                if (normalized.Equals("ENGINEER", StringComparison.OrdinalIgnoreCase))
+                    conventionCandidates.Add("EngineerSequence");
+            }
+
+            foreach (string candidate in conventionCandidates)
+            {
+                if (art.HasSection(candidate))
+                    return candidate;
+            }
+
             return null;
         }
 
@@ -321,6 +346,27 @@ namespace RA2RPG.EditorTools
 
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
+
+            AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(prefabPath, ImportAssetOptions.ForceUpdate);
+
+            GameObject savedPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (savedPrefab == null)
+                throw new InvalidOperationException($"Prefab was not created: {prefabPath}");
+
+            if (!string.IsNullOrWhiteSpace(sequenceId))
+            {
+                var savedData = savedPrefab.GetComponent<RA2InfantryAnimationData>();
+                var savedAnimator = savedPrefab.GetComponent<RA2GenericInfantryAnimator>();
+
+                if (savedData == null || savedAnimator == null)
+                {
+                    throw new InvalidOperationException(
+                        $"Sequence '{sequenceId}' was resolved for {objectId}, but the saved prefab " +
+                        $"is missing RA2InfantryAnimationData/RA2GenericInfantryAnimator."
+                    );
+                }
+            }
         }
 
         private static IniDocument LoadMergedArtIni(string localRa2)
