@@ -73,9 +73,17 @@ namespace RA2RPG.EditorTools
 
             var palette = WestwoodPalette.FromBytes(paletteResult.Data);
 
-            var parts = new List<(string role, string filename, VxlFileDecoder model)>
+            var parts = new List<(string role, string filename, VxlFileDecoder model, HvaFileDecoder hva)>
             {
-                ("Body", resolvedVxlFilename, VxlFileDecoder.Decode(vxlResult.Data))
+                (
+                    "Body",
+                    resolvedVxlFilename,
+                    VxlFileDecoder.Decode(vxlResult.Data),
+                    LoadHvaIfPresent(
+                        localRa2,
+                        Path.GetFileNameWithoutExtension(resolvedVxlFilename) + ".HVA"
+                    )
+                )
             };
 
             string baseName = Path.GetFileNameWithoutExtension(resolvedVxlFilename);
@@ -97,7 +105,11 @@ namespace RA2RPG.EditorTools
                     parts.Add((
                         extra.Item1,
                         extra.Item2,
-                        VxlFileDecoder.Decode(found.Data)
+                        VxlFileDecoder.Decode(found.Data),
+                        LoadHvaIfPresent(
+                            localRa2,
+                            Path.GetFileNameWithoutExtension(extra.Item2) + ".HVA"
+                        )
                     ));
                 }
             }
@@ -157,6 +169,12 @@ namespace RA2RPG.EditorTools
 
                     limbObject.transform.SetParent(partObject.transform, false);
 
+                    if (part.hva != null &&
+                        part.hva.TryGetFrame(limb.Name, 0, out Matrix4x4 frame0))
+                    {
+                        ApplyMatrixToTransform(limbObject.transform, frame0);
+                    }
+
                     var filter = limbObject.AddComponent<MeshFilter>();
                     filter.sharedMesh = mesh;
 
@@ -182,13 +200,67 @@ namespace RA2RPG.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
+            int hvaCount = 0;
+            foreach (var part in parts)
+                if (part.hva != null)
+                    hvaCount++;
+
             Debug.Log(
                 $"RA2 vehicle imported: {objectId} -> {resolvedVxlFilename}; " +
-                $"{parts.Count} VXL part(s), {totalLimbs} limb(s), {totalVoxels} voxels; " +
-                $"prefab: {prefabPath}"
+                $"{parts.Count} VXL part(s), {hvaCount} HVA file(s), " +
+                $"{totalLimbs} limb(s), {totalVoxels} voxels; prefab: {prefabPath}"
             );
 
             return prefabPath;
+        }
+
+        private static HvaFileDecoder LoadHvaIfPresent(
+            string localRa2,
+            string hvaFilename
+        )
+        {
+            var found = RA2AssetLocator.FindInDirectory(
+                localRa2,
+                hvaFilename,
+                4
+            );
+
+            return found == null
+                ? null
+                : HvaFileDecoder.Decode(found.Data);
+        }
+
+        private static void ApplyMatrixToTransform(
+            Transform target,
+            Matrix4x4 matrix
+        )
+        {
+            target.localPosition = matrix.GetColumn(3);
+
+            Vector3 forward = matrix.GetColumn(2);
+            Vector3 up = matrix.GetColumn(1);
+
+            if (forward.sqrMagnitude > 0.000001f &&
+                up.sqrMagnitude > 0.000001f)
+            {
+                target.localRotation = Quaternion.LookRotation(
+                    forward.normalized,
+                    up.normalized
+                );
+            }
+
+            Vector3 scale = new Vector3(
+                matrix.GetColumn(0).magnitude,
+                matrix.GetColumn(1).magnitude,
+                matrix.GetColumn(2).magnitude
+            );
+
+            if (scale.x > 0.000001f &&
+                scale.y > 0.000001f &&
+                scale.z > 0.000001f)
+            {
+                target.localScale = scale;
+            }
         }
 
         private static Mesh BuildMesh(
