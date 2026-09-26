@@ -18,6 +18,7 @@ namespace RA2RPG.RA2
             public string AltCameoId;
             public string AltCameoFilename;
             public string SequenceId;
+            public bool IsVoxel;
             public string SpritePath;
             public string CameoPath;
             public bool SpriteFound;
@@ -118,6 +119,12 @@ namespace RA2RPG.RA2
                     art?.Get(id, "Sequence") ??
                     rules?.Get(id, "Sequence");
 
+                bool isVoxel = IsTruthy(
+                    art?.Get(imageId, "Voxel") ??
+                    art?.Get(id, "Voxel") ??
+                    rules?.Get(id, "Voxel")
+                );
+
                 string displayName =
                     rules?.Get(id, "Name") ??
                     id;
@@ -129,10 +136,11 @@ namespace RA2RPG.RA2
                     ImageId = imageId,
                     CameoId = cameoId,
                     AltCameoId = altCameoId,
-                    SpriteFilename = NormalizeSpriteFilename(imageId),
+                    SpriteFilename = NormalizeSpriteFilename(imageId, isVoxel),
                     CameoFilename = NormalizeCameoFilename(cameoId),
                     AltCameoFilename = NormalizeCameoFilename(altCameoId),
-                    SequenceId = sequenceId
+                    SequenceId = sequenceId,
+                    IsVoxel = isVoxel
                 };
 
                 ResolveEntry(archiveIndex, entry);
@@ -198,7 +206,18 @@ namespace RA2RPG.RA2
                 : IniDocument.Parse(string.Join("\n", textParts));
         }
 
-        private static string NormalizeSpriteFilename(string imageId)
+        private static bool IsTruthy(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            value = value.Trim();
+            return value.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+                   value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+                   value.Equals("1", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static string NormalizeSpriteFilename(string imageId, bool isVoxel)
         {
             if (string.IsNullOrWhiteSpace(imageId))
                 return null;
@@ -210,7 +229,7 @@ namespace RA2RPG.RA2
                 value.EndsWith(".HVA", StringComparison.OrdinalIgnoreCase))
                 return value.ToUpperInvariant();
 
-            return value.ToUpperInvariant() + ".SHP";
+            return value.ToUpperInvariant() + (isVoxel ? ".VXL" : ".SHP");
         }
 
         private static string NormalizeCameoFilename(string cameoId)
