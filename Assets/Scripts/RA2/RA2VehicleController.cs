@@ -19,13 +19,14 @@ namespace RA2RPG.RA2
 
         [Header("Imported hierarchy")]
         [SerializeField] private Transform visual;
+        [SerializeField] private Transform body;
         [SerializeField] private Transform turret;
         [SerializeField] private Transform barrel;
 
         private Vector3 target;
         private bool hasTarget;
 
-        private Quaternion visualBaseRotation;
+        private Quaternion bodyBaseRotation;
         private Quaternion turretBaseRotation;
         private Quaternion barrelBaseRotation;
 
@@ -38,8 +39,8 @@ namespace RA2RPG.RA2
 
             ResolveImportedHierarchy();
 
-            if (visual != null)
-                visualBaseRotation = visual.localRotation;
+            if (body != null)
+                bodyBaseRotation = body.localRotation;
 
             if (turret != null)
                 turretBaseRotation = turret.localRotation;
@@ -59,6 +60,9 @@ namespace RA2RPG.RA2
         {
             if (visual == null)
                 visual = transform.Find("Visual");
+
+            if (visual != null && body == null)
+                body = visual.Find("Body");
 
             if (visual != null && turret == null)
                 turret = visual.Find("Turret");
@@ -109,17 +113,18 @@ namespace RA2RPG.RA2
 
             Vector3 direction = delta.normalized;
 
-            // Rotate the imported visual in screen space while preserving
-            // the original isometric presentation rotation.
-            if (visual != null)
+            // The VXL model is a real 3D volume. Its vertical axis is Unity Y,
+            // so heading must be a yaw around local Y. Rotating the whole
+            // presentation around screen Z causes the model to roll/flip.
+            if (body != null)
             {
-                float heading = Mathf.Atan2(-direction.x, direction.y) * Mathf.Rad2Deg;
+                float heading = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
                 Quaternion desired =
-                    Quaternion.AngleAxis(heading, Vector3.forward) *
-                    visualBaseRotation;
+                    bodyBaseRotation *
+                    Quaternion.AngleAxis(heading, Vector3.up);
 
-                visual.localRotation = Quaternion.RotateTowards(
-                    visual.localRotation,
+                body.localRotation = Quaternion.RotateTowards(
+                    body.localRotation,
                     desired,
                     turnSpeedDegrees * Time.deltaTime
                 );
@@ -151,12 +156,12 @@ namespace RA2RPG.RA2
             if (delta.sqrMagnitude < 0.000001f)
                 return;
 
-            float angle = Mathf.Atan2(-delta.x, delta.y) * Mathf.Rad2Deg;
+            float angle = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
 
-            // Turret/barrel remain independent of chassis heading.
+            // Turret/barrel yaw around their own vertical Y axis.
             Quaternion desiredTurret =
-                Quaternion.AngleAxis(angle, Vector3.forward) *
-                turretBaseRotation;
+                turretBaseRotation *
+                Quaternion.AngleAxis(angle, Vector3.up);
 
             turret.localRotation = Quaternion.RotateTowards(
                 turret.localRotation,
@@ -167,8 +172,8 @@ namespace RA2RPG.RA2
             if (barrel != null)
             {
                 Quaternion desiredBarrel =
-                    Quaternion.AngleAxis(angle, Vector3.forward) *
-                    barrelBaseRotation;
+                    barrelBaseRotation *
+                    Quaternion.AngleAxis(angle, Vector3.up);
 
                 barrel.localRotation = Quaternion.RotateTowards(
                     barrel.localRotation,
