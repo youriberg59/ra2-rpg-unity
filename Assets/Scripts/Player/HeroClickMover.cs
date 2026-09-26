@@ -82,17 +82,7 @@ namespace RA2RPG.Player
                 renderer.material = new Material(Shader.Find("Sprites/Default"));
                 renderer.material.color = new Color(1f, 0.15f, 0.15f, 0.85f);
 
-                var meshCollider = targetMarker.GetComponent<MeshCollider>();
-                if (meshCollider != null)
-                    Destroy(meshCollider);
 
-                var boxCollider = targetMarker.GetComponent<BoxCollider>();
-                if (boxCollider != null)
-                    Destroy(boxCollider);
-
-                var sphereCollider = targetMarker.GetComponent<SphereCollider>();
-                if (sphereCollider != null)
-                    Destroy(sphereCollider);
             }
 
             targetMarker.transform.position = new Vector3(
