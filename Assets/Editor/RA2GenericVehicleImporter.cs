@@ -130,16 +130,15 @@ namespace RA2RPG.EditorTools
 
             var root = new GameObject(objectId);
 
-            var heading = new GameObject("Heading");
-            heading.transform.SetParent(root.transform, false);
-
             var visual = new GameObject("Visual");
-            visual.transform.SetParent(heading.transform, false);
+            visual.transform.SetParent(root.transform, false);
 
-            // Fixed presentation transform is exposed on a component so it can
-            // be tuned without reimporting or touching gameplay heading logic.
+            // Fixed isometric presentation stays above the gameplay heading.
             var presentation = visual.AddComponent<RA2VehiclePresentation>();
             presentation.EulerAngles = new Vector3(35.264f, 45f, 0f);
+
+            var heading = new GameObject("Heading");
+            heading.transform.SetParent(visual.transform, false);
 
             int totalVoxels = 0;
             int totalLimbs = 0;
@@ -148,7 +147,7 @@ namespace RA2RPG.EditorTools
             foreach (var part in parts)
             {
                 var partObject = new GameObject(part.role);
-                partObject.transform.SetParent(visual.transform, false);
+                partObject.transform.SetParent(heading.transform, false);
 
                 foreach (var limb in part.model.Limbs)
                 {
