@@ -56,12 +56,10 @@ namespace RA2RPG.EditorTools
             string localRa2 = context.LocalRa2;
             var entry = context.Database.Get(objectId);
 
-            if (entry == null)
-                throw new InvalidOperationException($"RA2 object '{objectId}' was not found.");
-
-            string imageBase = !string.IsNullOrWhiteSpace(entry.ImageId)
-                ? Path.GetFileNameWithoutExtension(entry.ImageId.Trim())
-                : objectId;
+            string imageBase =
+                entry != null && !string.IsNullOrWhiteSpace(entry.ImageId)
+                    ? Path.GetFileNameWithoutExtension(entry.ImageId.Trim())
+                    : objectId;
 
             string[] vxlCandidates =
             {
@@ -92,7 +90,7 @@ namespace RA2RPG.EditorTools
                 throw new FileNotFoundException(
                     $"No VXL asset was found for '{objectId}'. " +
                     $"Tried: {string.Join(", ", vxlCandidates)}. " +
-                    $"Catalog resolved: {entry.SpriteFilename ?? "(none)"}."
+                    $"Catalog resolved: {(entry != null ? entry.SpriteFilename : "(no catalog entry)")}."
                 );
             }
 
@@ -217,7 +215,10 @@ namespace RA2RPG.EditorTools
 
             var metadata = root.AddComponent<RA2ImportedVehicleMetadata>();
             metadata.ObjectId = objectId;
-            metadata.DisplayName = entry.DisplayName;
+            metadata.DisplayName =
+                entry != null && !string.IsNullOrWhiteSpace(entry.DisplayName)
+                    ? entry.DisplayName
+                    : objectId;
             metadata.VxlFilename = resolvedVxlFilename;
             metadata.HvaFilename = Path.GetFileNameWithoutExtension(resolvedVxlFilename) + ".HVA";
             metadata.LimbCount = totalLimbs;
