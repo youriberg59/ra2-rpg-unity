@@ -9,6 +9,7 @@ namespace RA2RPG.Player
 
         private Vector3 target;
         private bool hasTarget;
+        private GameObject targetMarker;
 
         public Vector3 Target => target;
         public bool HasTarget => hasTarget;
@@ -66,6 +67,31 @@ namespace RA2RPG.Player
             worldPosition.z = transform.position.z;
             target = worldPosition;
             hasTarget = true;
+            UpdateTargetMarker();
+        }
+
+        private void UpdateTargetMarker()
+        {
+            if (targetMarker == null)
+            {
+                targetMarker = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                targetMarker.name = "ClickTargetMarker";
+                targetMarker.transform.localScale = new Vector3(0.18f, 0.18f, 1f);
+
+                var renderer = targetMarker.GetComponent<MeshRenderer>();
+                renderer.material = new Material(Shader.Find("Sprites/Default"));
+                renderer.material.color = new Color(1f, 0.15f, 0.15f, 0.85f);
+
+                var collider = targetMarker.GetComponent<Collider>();
+                if (collider != null)
+                    Destroy(collider);
+            }
+
+            targetMarker.transform.position = new Vector3(
+                target.x,
+                target.y,
+                transform.position.z - 0.1f
+            );
         }
     }
 }
