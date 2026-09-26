@@ -58,17 +58,17 @@ namespace RA2RPG.RA2
 
         private void ResolveImportedHierarchy()
         {
-            if (heading == null)
-                heading = transform.Find("Heading");
+            if (visual == null)
+                visual = transform.Find("Visual");
 
-            if (heading != null && visual == null)
-                visual = heading.Find("Visual");
+            if (visual != null && heading == null)
+                heading = visual.Find("Heading");
 
-            if (visual != null && turret == null)
-                turret = visual.Find("Turret");
+            if (heading != null && turret == null)
+                turret = heading.Find("Turret");
 
-            if (visual != null && barrel == null)
-                barrel = visual.Find("Barrel");
+            if (heading != null && barrel == null)
+                barrel = heading.Find("Barrel");
         }
 
         private void ReadMoveClick()
@@ -113,17 +113,15 @@ namespace RA2RPG.RA2
 
             Vector3 direction = delta.normalized;
 
-            // Rotate a dedicated 2D heading parent around screen/world Z.
-            // The 3D isometric Visual remains fixed below it, so the vehicle
-            // never rolls or flips while changing direction.
+            // Heading lives BELOW the fixed isometric presentation.
+            // Rotating around local Y now turns only the vehicle on its own
+            // vertical axis without rotating the isometric plane itself.
             if (heading != null)
             {
-                // RA2 voxel forward points along +X, while a zero heading in
-                // screen space points up (+Y), so compensate by -90 degrees.
-                float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+                float angle = Mathf.Atan2(direction.x, direction.y) * Mathf.Rad2Deg;
                 Quaternion desired =
                     headingBaseRotation *
-                    Quaternion.AngleAxis(angle, Vector3.forward);
+                    Quaternion.AngleAxis(angle, Vector3.up);
 
                 heading.localRotation = Quaternion.RotateTowards(
                     heading.localRotation,
@@ -158,9 +156,9 @@ namespace RA2RPG.RA2
             if (delta.sqrMagnitude < 0.000001f)
                 return;
 
-            float worldAngle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
+            float worldAngle = Mathf.Atan2(delta.x, delta.y) * Mathf.Rad2Deg;
             float headingAngle = heading != null
-                ? heading.localEulerAngles.z
+                ? heading.localEulerAngles.y
                 : 0f;
             float localAim = Mathf.DeltaAngle(headingAngle, worldAngle);
 
