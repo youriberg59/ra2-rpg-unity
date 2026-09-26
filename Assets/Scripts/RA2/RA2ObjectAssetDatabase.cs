@@ -17,6 +17,7 @@ namespace RA2RPG.RA2
             public string CameoFilename;
             public string AltCameoId;
             public string AltCameoFilename;
+            public string SequenceId;
             public string SpritePath;
             public string CameoPath;
             public bool SpriteFound;
@@ -112,6 +113,11 @@ namespace RA2RPG.RA2
                     art?.Get(id, "AltCameo") ??
                     rules?.Get(id, "AltCameo");
 
+                string sequenceId =
+                    art?.Get(imageId, "Sequence") ??
+                    art?.Get(id, "Sequence") ??
+                    rules?.Get(id, "Sequence");
+
                 string displayName =
                     rules?.Get(id, "Name") ??
                     id;
@@ -125,7 +131,8 @@ namespace RA2RPG.RA2
                     AltCameoId = altCameoId,
                     SpriteFilename = NormalizeSpriteFilename(imageId),
                     CameoFilename = NormalizeCameoFilename(cameoId),
-                    AltCameoFilename = NormalizeCameoFilename(altCameoId)
+                    AltCameoFilename = NormalizeCameoFilename(altCameoId),
+                    SequenceId = sequenceId
                 };
 
                 ResolveEntry(archiveIndex, entry);
