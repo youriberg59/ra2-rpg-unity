@@ -92,15 +92,18 @@ namespace RA2RPG.EditorTools
                 var result = RA2AssetLocator.FindInDirectory(root, filename);
                 bool found = result != null;
 
-                int topLevelMixCount = Directory.Exists(root)
-                    ? Directory.GetFiles(root, "*.mix", SearchOption.AllDirectories).Length
-                    : 0;
+                int topLevelMixCount = 0;
+                if (Directory.Exists(root))
+                {
+                    topLevelMixCount += Directory.GetFiles(root, "*.mix", SearchOption.AllDirectories).Length;
+                    topLevelMixCount += Directory.GetFiles(root, "*.dat", SearchOption.AllDirectories).Length;
+                }
 
                 status =
                     $"Filename: {filename}\n" +
                     $"Westwood hash: 0x{hash:X8}\n" +
                     $"Found: {found}\n" +
-                    $"MIX archives scanned: {topLevelMixCount}" +
+                    $"MIX/DAT archives scanned: {topLevelMixCount}" +
                     (found ? $"\nPath: {result.Path}" : "");
             }
             catch (Exception ex)
