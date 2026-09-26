@@ -99,8 +99,16 @@ namespace RA2RPG.EditorTools
                     $"'{objectId}' decoded successfully but Unity imported no sprites."
                 );
 
+            IniDocument art = LoadMergedArtIni(localRa2);
             string prefabPath = $"{prefabFolder}/{objectId}.prefab";
-            CreateOrReplacePrefab(objectId, entry.DisplayName, sprites[0], prefabPath);
+            CreateOrReplacePrefab(
+                objectId,
+                entry.DisplayName,
+                entry.SequenceId,
+                art,
+                sprites.ToArray(),
+                prefabPath
+            );
 
             Debug.Log(
                 $"RA2 generic import complete: {objectId} -> {entry.SpriteFilename}, " +
@@ -206,7 +214,9 @@ namespace RA2RPG.EditorTools
         private static void CreateOrReplacePrefab(
             string objectId,
             string displayName,
-            Sprite firstSprite,
+            string sequenceId,
+            IniDocument art,
+            Sprite[] sprites,
             string prefabPath
         )
         {
@@ -214,15 +224,79 @@ namespace RA2RPG.EditorTools
             root.name = objectId;
 
             var renderer = root.AddComponent<SpriteRenderer>();
-            renderer.sprite = firstSprite;
+            renderer.sprite = sprites.Length > 0 ? sprites[0] : null;
             renderer.sortingOrder = 100;
 
             var metadata = root.AddComponent<RA2ImportedUnitMetadata>();
             metadata.ObjectId = objectId;
             metadata.DisplayName = displayName;
 
+            if (!string.IsNullOrWhiteSpace(sequenceId) &&
+                art != null &&
+                art.HasSection(sequenceId))
+            {
+                var data = root.AddComponent<RA2InfantryAnimationData>();
+                data.SequenceId = sequenceId;
+                data.Ready = ParseSequenceRange(art.Get(sequenceId, "Ready"));
+                data.Walk = ParseSequenceRange(art.Get(sequenceId, "Walk"));
+                data.FireUp = ParseSequenceRange(art.Get(sequenceId, "FireUp"));
+                data.FireProne = ParseSequenceRange(art.Get(sequenceId, "FireProne"));
+                data.Die1 = ParseSequenceRange(art.Get(sequenceId, "Die1"));
+                data.Die2 = ParseSequenceRange(art.Get(sequenceId, "Die2"));
+                data.Idle1 = ParseSequenceRange(art.Get(sequenceId, "Idle1"));
+                data.Idle2 = ParseSequenceRange(art.Get(sequenceId, "Idle2"));
+
+                var animator = root.AddComponent<RA2GenericInfantryAnimator>();
+                animator.Frames = sprites;
+            }
+
             PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
             UnityEngine.Object.DestroyImmediate(root);
+        }
+
+        private static IniDocument LoadMergedArtIni(string localRa2)
+        {
+            var parts = new List<string>();
+
+            foreach (string filename in new[] { "art.ini", "artmd.ini" })
+            {
+                var result = RA2AssetLocator.FindInDirectory(localRa2, filename, 4);
+                if (result != null)
+                    parts.Add(System.Text.Encoding.UTF8.GetString(result.Data));
+            }
+
+            return parts.Count == 0
+                ? null
+                : IniDocument.Parse(string.Join("\n", parts));
+        }
+
+        private static RA2SequenceRange ParseSequenceRange(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return default;
+
+            string[] parts = value.Split(',');
+            if (parts.Length < 2)
+                return default;
+
+            if (!int.TryParse(parts[0].Trim(), out int start) ||
+                !int.TryParse(parts[1].Trim(), out int frames))
+                return default;
+
+            int facingStride = frames;
+            if (parts.Length >= 3 &&
+                int.TryParse(parts[2].Trim(), out int parsedStride) &&
+                parsedStride > 0)
+            {
+                facingStride = parsedStride;
+            }
+
+            return new RA2SequenceRange
+            {
+                Start = start,
+                Frames = frames,
+                FacingStride = facingStride
+            };
         }
 
         private static void EnsureFolder(string parent, string child)
