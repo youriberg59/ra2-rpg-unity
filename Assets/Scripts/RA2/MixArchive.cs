@@ -205,19 +205,26 @@ namespace RA2RPG.RA2
             if (!TryGetEntry(filename, out Entry entry))
                 throw new FileNotFoundException($"'{filename}' was not found in {DisplayName}.");
 
+            return ReadEntry(entry, filename);
+        }
+
+        public byte[] ReadEntry(Entry entry, string label = null)
+        {
             long absoluteOffset = dataStart + entry.Offset;
             long end = absoluteOffset + entry.Length;
 
             if (absoluteOffset < 0 || end > stream.Length)
                 throw new InvalidDataException(
-                    $"Entry '{filename}' points outside the MIX archive."
+                    $"Entry '{label ?? entry.Hash.ToString("X8")}' points outside the MIX archive."
                 );
 
             stream.Position = absoluteOffset;
             byte[] data = reader.ReadBytes(checked((int)entry.Length));
 
             if (data.Length != entry.Length)
-                throw new EndOfStreamException($"Could not read the complete MIX entry '{filename}'.");
+                throw new EndOfStreamException(
+                    $"Could not read the complete MIX entry '{label ?? entry.Hash.ToString("X8")}'."
+                );
 
             return data;
         }
