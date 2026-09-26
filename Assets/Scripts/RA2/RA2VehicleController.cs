@@ -25,6 +25,7 @@ namespace RA2RPG.RA2
 
         private Vector3 target;
         private bool hasTarget;
+        private bool isSelected;
 
         private Quaternion headingBaseRotation;
         private Quaternion turretBaseRotation;
@@ -32,6 +33,7 @@ namespace RA2RPG.RA2
 
         public Vector3 Target => target;
         public bool HasTarget => hasTarget;
+        public bool IsSelected => isSelected;
 
         private void Awake()
         {
@@ -49,11 +51,17 @@ namespace RA2RPG.RA2
                 barrelBaseRotation = barrel.localRotation;
         }
 
+        private void Start()
+        {
+            RA2VehicleSelectionManager.EnsureExists();
+        }
+
         private void Update()
         {
-            ReadMoveClick();
             MoveVehicle();
-            AimTurretAtMouse();
+
+            if (isSelected)
+                AimTurretAtMouse();
         }
 
         private void ResolveImportedHierarchy()
@@ -69,31 +77,6 @@ namespace RA2RPG.RA2
 
             if (heading != null && barrel == null)
                 barrel = heading.Find("Barrel");
-        }
-
-        private void ReadMoveClick()
-        {
-            Camera camera = Camera.main;
-            if (camera == null)
-                return;
-
-            bool click =
-                Input.GetMouseButtonDown(0) ||
-                Input.GetMouseButtonDown(1);
-
-            if (!click ||
-                Input.GetKey(KeyCode.LeftShift) ||
-                Input.GetKey(KeyCode.RightShift))
-                return;
-
-            Vector3 mouse = Input.mousePosition;
-            mouse.z = -camera.transform.position.z;
-
-            Vector3 world = camera.ScreenToWorldPoint(mouse);
-            world.z = transform.position.z;
-
-            target = world;
-            hasTarget = true;
         }
 
         private void MoveVehicle()
@@ -186,6 +169,11 @@ namespace RA2RPG.RA2
                     turretTurnSpeedDegrees * Time.deltaTime
                 );
             }
+        }
+
+        public void SetSelected(bool selected)
+        {
+            isSelected = selected;
         }
 
         public void SetDestination(Vector3 worldPosition)
