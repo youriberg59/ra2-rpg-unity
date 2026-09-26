@@ -9,18 +9,54 @@ namespace RA2RPG.EditorTools
 {
     public static class RA2GenericUnitImporter
     {
+        public sealed class ImportContext
+        {
+            public string LocalRa2;
+            public RA2ObjectAssetDatabase Database;
+            public IniDocument Art;
+            public WestwoodPalette Palette;
+        }
+
+        public static ImportContext CreateContext()
+        {
+            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+            string localRa2 = Path.Combine(projectRoot, "LocalRA2");
+
+            var paletteResult = RA2AssetLocator.FindInDirectory(
+                localRa2,
+                "unittem.pal",
+                4
+            );
+
+            if (paletteResult == null)
+                throw new FileNotFoundException("unittem.pal was not found in LocalRA2 archives.");
+
+            return new ImportContext
+            {
+                LocalRa2 = localRa2,
+                Database = RA2ObjectAssetDatabase.Build(localRa2, null),
+                Art = LoadMergedArtIni(localRa2),
+                Palette = WestwoodPalette.FromBytes(paletteResult.Data)
+            };
+        }
+
         public static string Import(string objectId)
+        {
+            return Import(objectId, CreateContext());
+        }
+
+        public static string Import(string objectId, ImportContext context)
         {
             if (string.IsNullOrWhiteSpace(objectId))
                 throw new ArgumentException("Object ID is required.", nameof(objectId));
 
             objectId = objectId.Trim().ToUpperInvariant();
 
-            string projectRoot = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
-            string localRa2 = Path.Combine(projectRoot, "LocalRA2");
+            if (context == null)
+                throw new ArgumentNullException(nameof(context));
 
-            var database = RA2ObjectAssetDatabase.Build(localRa2, null);
-            var entry = database.Get(objectId);
+            string localRa2 = context.LocalRa2;
+            var entry = context.Database.Get(objectId);
 
             if (entry == null)
                 throw new InvalidOperationException($"RA2 object '{objectId}' was not found in rules/art.");
@@ -45,17 +81,8 @@ namespace RA2RPG.EditorTools
                     $"Resolved sprite '{entry.SpriteFilename}' was not found in LocalRA2."
                 );
 
-            var paletteResult = RA2AssetLocator.FindInDirectory(
-                localRa2,
-                "unittem.pal",
-                4
-            );
-
-            if (paletteResult == null)
-                throw new FileNotFoundException("unittem.pal was not found in LocalRA2 archives.");
-
             var shp = ShpFileDecoder.Decode(spriteResult.Data);
-            var palette = WestwoodPalette.FromBytes(paletteResult.Data);
+            var palette = context.Palette;
 
             string baseFolder = $"Assets/Generated/RA2/Units/{objectId}";
             string framesFolder = baseFolder + "/Frames";
@@ -99,7 +126,7 @@ namespace RA2RPG.EditorTools
                     $"'{objectId}' decoded successfully but Unity imported no sprites."
                 );
 
-            IniDocument art = LoadMergedArtIni(localRa2);
+            IniDocument art = context.Art;
             string prefabPath = $"{prefabFolder}/{objectId}.prefab";
             CreateOrReplacePrefab(
                 objectId,
