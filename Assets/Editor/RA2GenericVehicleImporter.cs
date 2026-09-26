@@ -71,8 +71,36 @@ namespace RA2RPG.EditorTools
             if (paletteResult == null)
                 throw new FileNotFoundException("unittem.pal was not found.");
 
-            var model = VxlFileDecoder.Decode(vxlResult.Data);
             var palette = WestwoodPalette.FromBytes(paletteResult.Data);
+
+            var parts = new List<(string role, string filename, VxlFileDecoder model)>
+            {
+                ("Body", resolvedVxlFilename, VxlFileDecoder.Decode(vxlResult.Data))
+            };
+
+            string baseName = Path.GetFileNameWithoutExtension(resolvedVxlFilename);
+
+            foreach (var extra in new[]
+            {
+                ("Turret", baseName + "TUR.VXL"),
+                ("Barrel", baseName + "BARL.VXL")
+            })
+            {
+                var found = RA2AssetLocator.FindInDirectory(
+                    localRa2,
+                    extra.Item2,
+                    4
+                );
+
+                if (found != null)
+                {
+                    parts.Add((
+                        extra.Item1,
+                        extra.Item2,
+                        VxlFileDecoder.Decode(found.Data)
+                    ));
+                }
+            }
 
             string baseFolder = $"Assets/Generated/RA2/Vehicles/{objectId}";
             string meshFolder = baseFolder + "/Meshes";
@@ -96,36 +124,45 @@ namespace RA2RPG.EditorTools
             visual.transform.localRotation = Quaternion.Euler(28f, 45f, 0f);
 
             int totalVoxels = 0;
-            var createdMeshes = new List<Mesh>();
+            int totalLimbs = 0;
+            int meshIndex = 0;
 
-            for (int i = 0; i < model.Limbs.Count; i++)
+            foreach (var part in parts)
             {
-                var limb = model.Limbs[i];
-                totalVoxels += limb.Voxels.Count;
+                var partObject = new GameObject(part.role);
+                partObject.transform.SetParent(visual.transform, false);
 
-                Mesh mesh = BuildMesh(limb, palette);
-                mesh.name = $"{objectId}_{Sanitize(limb.Name)}";
+                foreach (var limb in part.model.Limbs)
+                {
+                    totalVoxels += limb.Voxels.Count;
+                    totalLimbs++;
 
-                string meshPath =
-                    $"{meshFolder}/{objectId}_{i:D2}_{Sanitize(limb.Name)}.asset";
+                    Mesh mesh = BuildMesh(limb, palette);
+                    mesh.name = $"{objectId}_{part.role}_{Sanitize(limb.Name)}";
 
-                if (AssetDatabase.LoadAssetAtPath<Mesh>(meshPath) != null)
-                    AssetDatabase.DeleteAsset(meshPath);
+                    string meshPath =
+                        $"{meshFolder}/{objectId}_{meshIndex:D2}_{part.role}_{Sanitize(limb.Name)}.asset";
 
-                AssetDatabase.CreateAsset(mesh, meshPath);
-                createdMeshes.Add(mesh);
+                    if (AssetDatabase.LoadAssetAtPath<Mesh>(meshPath) != null)
+                        AssetDatabase.DeleteAsset(meshPath);
 
-                var limbObject = new GameObject(
-                    string.IsNullOrWhiteSpace(limb.Name) ? $"Limb_{i}" : limb.Name
-                );
+                    AssetDatabase.CreateAsset(mesh, meshPath);
+                    meshIndex++;
 
-                limbObject.transform.SetParent(visual.transform, false);
+                    var limbObject = new GameObject(
+                        string.IsNullOrWhiteSpace(limb.Name)
+                            ? $"{part.role}_Limb"
+                            : limb.Name
+                    );
 
-                var filter = limbObject.AddComponent<MeshFilter>();
-                filter.sharedMesh = mesh;
+                    limbObject.transform.SetParent(partObject.transform, false);
 
-                var renderer = limbObject.AddComponent<MeshRenderer>();
-                renderer.sharedMaterial = material;
+                    var filter = limbObject.AddComponent<MeshFilter>();
+                    filter.sharedMesh = mesh;
+
+                    var renderer = limbObject.AddComponent<MeshRenderer>();
+                    renderer.sharedMaterial = material;
+                }
             }
 
             NormalizeVisualScale(visual, 1.25f);
@@ -135,7 +172,7 @@ namespace RA2RPG.EditorTools
             metadata.DisplayName = entry.DisplayName;
             metadata.VxlFilename = resolvedVxlFilename;
             metadata.HvaFilename = Path.GetFileNameWithoutExtension(resolvedVxlFilename) + ".HVA";
-            metadata.LimbCount = model.Limbs.Count;
+            metadata.LimbCount = totalLimbs;
             metadata.VoxelCount = totalVoxels;
 
             string prefabPath = $"{prefabFolder}/{objectId}.prefab";
@@ -147,7 +184,8 @@ namespace RA2RPG.EditorTools
 
             Debug.Log(
                 $"RA2 vehicle imported: {objectId} -> {resolvedVxlFilename}; " +
-                $"{model.Limbs.Count} limb(s), {totalVoxels} voxels; prefab: {prefabPath}"
+                $"{parts.Count} VXL part(s), {totalLimbs} limb(s), {totalVoxels} voxels; " +
+                $"prefab: {prefabPath}"
             );
 
             return prefabPath;
