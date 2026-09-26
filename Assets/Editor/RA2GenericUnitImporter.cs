@@ -127,11 +127,13 @@ namespace RA2RPG.EditorTools
                 );
 
             IniDocument art = context.Art;
+            string resolvedSequenceId = ResolveSequenceId(entry, art);
+
             string prefabPath = $"{prefabFolder}/{objectId}.prefab";
             CreateOrReplacePrefab(
                 objectId,
                 entry.DisplayName,
-                entry.SequenceId,
+                resolvedSequenceId,
                 art,
                 sprites.ToArray(),
                 prefabPath
@@ -139,7 +141,8 @@ namespace RA2RPG.EditorTools
 
             Debug.Log(
                 $"RA2 generic import complete: {objectId} -> {entry.SpriteFilename}, " +
-                $"{sprites.Count} frames, prefab: {prefabPath}"
+                $"{sprites.Count} frames, sequence: {resolvedSequenceId ?? "(none)"}, " +
+                $"prefab: {prefabPath}"
             );
 
             return prefabPath;
@@ -236,6 +239,45 @@ namespace RA2RPG.EditorTools
             importer.SetTextureSettings(settings);
 
             importer.SaveAndReimport();
+        }
+
+        private static string ResolveSequenceId(
+            RA2ObjectAssetDatabase.Entry entry,
+            IniDocument art
+        )
+        {
+            if (art == null || entry == null)
+                return null;
+
+            // Prefer the sequence already resolved by the catalog.
+            if (!string.IsNullOrWhiteSpace(entry.SequenceId) &&
+                art.HasSection(entry.SequenceId))
+            {
+                return entry.SequenceId;
+            }
+
+            // Retail RA2 normally stores Sequence= on the art section named after
+            // the image ID (for example ENGINEER -> EngineerSequence).
+            string[] sectionCandidates =
+            {
+                entry.ImageId,
+                entry.Id,
+                string.IsNullOrWhiteSpace(entry.SpriteFilename)
+                    ? null
+                    : Path.GetFileNameWithoutExtension(entry.SpriteFilename)
+            };
+
+            foreach (string section in sectionCandidates)
+            {
+                if (string.IsNullOrWhiteSpace(section))
+                    continue;
+
+                string sequence = art.Get(section, "Sequence");
+                if (!string.IsNullOrWhiteSpace(sequence) && art.HasSection(sequence))
+                    return sequence;
+            }
+
+            return null;
         }
 
         private static void CreateOrReplacePrefab(
