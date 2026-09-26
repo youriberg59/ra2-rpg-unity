@@ -41,6 +41,17 @@ namespace RA2RPG.RA2
 
             var db = new RA2ObjectAssetDatabase();
 
+            trace?.Add("Building global RA2 archive index...");
+            RA2ArchiveIndex archiveIndex = RA2ArchiveIndex.Build(
+                localRa2Directory,
+                trace,
+                3
+            );
+            trace?.Add(
+                $"Archive index ready: {archiveIndex.OpenedArchives} archives, " +
+                $"{archiveIndex.IndexedEntries} entries, {archiveIndex.UniqueHashes} unique hashes."
+            );
+
             IniDocument rules = LoadMergedIni(
                 localRa2Directory,
                 new[] { "rules.ini", "rulesmd.ini" },
@@ -117,7 +128,7 @@ namespace RA2RPG.RA2
                     AltCameoFilename = NormalizeCameoFilename(altCameoId)
                 };
 
-                ResolveEntry(localRa2Directory, entry, trace);
+                ResolveEntry(archiveIndex, entry);
                 db.entries[id] = entry;
             }
 
@@ -125,24 +136,17 @@ namespace RA2RPG.RA2
         }
 
         private static void ResolveEntry(
-            string localRa2Directory,
-            Entry entry,
-            RA2AssetLocator.SearchTrace trace
+            RA2ArchiveIndex archiveIndex,
+            Entry entry
         )
         {
             if (!string.IsNullOrWhiteSpace(entry.SpriteFilename))
             {
-                var sprite = RA2AssetLocator.FindInDirectory(
-                    localRa2Directory,
-                    entry.SpriteFilename,
-                    4,
-                    trace
-                );
-
-                if (sprite != null)
+                string spritePath = archiveIndex.FindPath(entry.SpriteFilename);
+                if (spritePath != null)
                 {
                     entry.SpriteFound = true;
-                    entry.SpritePath = sprite.Path;
+                    entry.SpritePath = spritePath;
                 }
             }
 
@@ -152,17 +156,11 @@ namespace RA2RPG.RA2
 
             if (!string.IsNullOrWhiteSpace(cameoFilename))
             {
-                var cameo = RA2AssetLocator.FindInDirectory(
-                    localRa2Directory,
-                    cameoFilename,
-                    4,
-                    trace
-                );
-
-                if (cameo != null)
+                string cameoPath = archiveIndex.FindPath(cameoFilename);
+                if (cameoPath != null)
                 {
                     entry.CameoFound = true;
-                    entry.CameoPath = cameo.Path;
+                    entry.CameoPath = cameoPath;
                 }
             }
         }
@@ -173,9 +171,7 @@ namespace RA2RPG.RA2
             RA2AssetLocator.SearchTrace trace
         )
         {
-            // Later files (e.g. rulesmd.ini) override earlier ones.
-            IniDocument merged = new IniDocument();
-            bool any = false;
+            var textParts = new List<string>();
 
             foreach (string filename in filenames)
             {
@@ -186,45 +182,13 @@ namespace RA2RPG.RA2
                     trace
                 );
 
-                if (result == null)
-                    continue;
-
-                any = true;
-                var doc = IniDocument.Parse(result.Data);
-
-                foreach (string sectionName in doc.SectionNames)
-                {
-                    var section = doc.GetSection(sectionName);
-                    if (section == null)
-                        continue;
-
-                    // Re-serialize this small section into a temporary fragment and
-                    // merge through Parse to preserve case-insensitive behavior.
-                    var lines = new List<string> { $"[{sectionName}]" };
-                    lines.AddRange(section.Select(kv => $"{kv.Key}={kv.Value}"));
-                    var fragment = IniDocument.Parse(string.Join("\n", lines));
-
-                    var fragmentSection = fragment.GetSection(sectionName);
-                    foreach (var kv in fragmentSection)
-                    {
-                        // IniDocument does not expose mutation, so merge into a text buffer later.
-                    }
-                }
-            }
-
-            if (!any)
-                return null;
-
-            // Rebuild by concatenating actual source files in precedence order.
-            var textParts = new List<string>();
-            foreach (string filename in filenames)
-            {
-                var result = RA2AssetLocator.FindInDirectory(localRa2Directory, filename, 4, trace);
                 if (result != null)
                     textParts.Add(System.Text.Encoding.UTF8.GetString(result.Data));
             }
 
-            return IniDocument.Parse(string.Join("\n", textParts));
+            return textParts.Count == 0
+                ? null
+                : IniDocument.Parse(string.Join("\n", textParts));
         }
 
         private static string NormalizeSpriteFilename(string imageId)
