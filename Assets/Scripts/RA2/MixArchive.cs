@@ -27,12 +27,13 @@ namespace RA2RPG.RA2
             }
         }
 
-        private readonly FileStream stream;
+        private readonly Stream stream;
         private readonly BinaryReader reader;
         private readonly Dictionary<uint, Entry> entries = new Dictionary<uint, Entry>();
         private long dataStart;
 
         public string FilePath { get; }
+        public string DisplayName { get; }
         public bool IsEncrypted { get; private set; }
         public bool HasChecksum { get; private set; }
         public int EntryCount => entries.Count;
@@ -40,7 +41,18 @@ namespace RA2RPG.RA2
         public MixArchive(string filePath)
         {
             FilePath = filePath;
+            DisplayName = Path.GetFileName(filePath);
             stream = File.Open(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+            reader = new BinaryReader(stream);
+            ParseHeader();
+        }
+
+        public MixArchive(byte[] data, string displayName = "<memory.mix>")
+        {
+            if (data == null) throw new ArgumentNullException(nameof(data));
+            FilePath = displayName;
+            DisplayName = displayName;
+            stream = new MemoryStream(data, writable: false);
             reader = new BinaryReader(stream);
             ParseHeader();
         }
@@ -190,7 +202,7 @@ namespace RA2RPG.RA2
         public byte[] ReadFile(string filename)
         {
             if (!TryGetEntry(filename, out Entry entry))
-                throw new FileNotFoundException($"'{filename}' was not found in {Path.GetFileName(FilePath)}.");
+                throw new FileNotFoundException($"'{filename}' was not found in {DisplayName}.");
 
             long absoluteOffset = dataStart + entry.Offset;
             long end = absoluteOffset + entry.Length;
